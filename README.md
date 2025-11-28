@@ -1,35 +1,50 @@
 # DiscordHelp
 
-A new Agentuity project created with `create-agentuity`.
+An intelligent Discord bot that provides automated support for Agentuity by triaging user questions and creating Slack tickets for technical issues.
 
-## What You Get
+## What It Does
 
-A fully configured Agentuity project with:
+DiscordHelp is a multi-agent system that:
 
-- ✅ **TypeScript** - Full type safety out of the box
-- ✅ **Bun runtime** - Fast JavaScript runtime and package manager
-- ✅ **Hot reload** - Development server with auto-rebuild
-- ✅ **Example agent** - Sample "hello" agent to get started
-- ✅ **React frontend** - Pre-configured web interface
-- ✅ **API routes** - Example API endpoints
-- ✅ **Type checking** - TypeScript configuration ready to go
+- 🤖 **Monitors Discord messages** - Automatically processes questions in your Discord server
+- 🎯 **Intelligent triage** - Uses AI to categorize requests and determine the best action
+- 📚 **Documentation search** - Searches Agentuity docs to answer common questions
+- 🎫 **Slack ticket creation** - Creates support tickets in Slack for technical issues requiring staff attention
+- 👥 **Staff escalation** - Alerts staff members for bugs and errors that need immediate attention
+
+## How It Works
+
+The system uses three specialized agents:
+
+1. **Help Agent** (`/agents/help`) - Orchestrator that triages incoming Discord messages:
+   - Detects technical issues and creates Slack tickets
+   - Routes documentation questions to the docs agent
+   - Escalates bugs to staff members
+   - Ignores irrelevant messages
+
+2. **Docs Agent** (`/agents/docs`) - Searches Agentuity documentation:
+   - Fetches latest docs from agentuity.dev/llms.txt
+   - Uses Claude Sonnet to find relevant answers
+   - Returns helpful responses for how-to questions
+
+3. **Slack Agent** (`/agents/slack`) - Creates support tickets:
+   - Formats issues for Slack threads
+   - Posts to designated Slack channel
+   - Generates user acknowledgment messages
 
 ## Project Structure
 
 ```
-my-app/
+discordhelp/
 ├── src/
-│   ├── agents/          # Agent definitions
-│   │   └── hello/
-│   │       └── agent.ts # Example agent
-│   ├── apis/            # Custom API routes
-│   │   └── route.ts     # Example route
-│   └── web/             # React web application
-│       └── app.tsx      # Main React component
+│   ├── agents/
+│   │   ├── help/        # Main orchestrator agent
+│   │   ├── docs/        # Documentation search agent
+│   │   └── slack/       # Slack ticket creation agent
+│   └── apis/            # Custom API routes (if needed)
 ├── app.ts               # Application entry point
-├── tsconfig.json        # TypeScript configuration
-├── package.json         # Dependencies and scripts
-└── README.md            # Project documentation
+├── .env                 # Environment variables (see .env.example)
+└── package.json         # Dependencies and scripts
 ```
 
 ## Available Commands
@@ -60,69 +75,28 @@ bun run typecheck
 
 Runs TypeScript type checking
 
-## Next Steps
+## Configuration
 
-After creating your project:
+### Environment Variables
 
-1. **Customize the example agent** - Edit `src/agents/hello/agent.ts`
-2. **Add new agents** - Create new folders in `src/agents/`
-3. **Add API routes** - Create new routes in `src/apis/`
-4. **Customize the UI** - Edit `src/web/app.tsx`
-5. **Configure your app** - Modify `app.ts` to add middleware, configure services, etc.
+Create a `.env` file with the following variables:
 
-## Creating Custom Agents
-
-Create a new agent by adding a folder in `src/agents/`:
-
-```typescript
-// src/agents/my-agent/agent.ts
-import { type AgentContext, createAgent } from '@agentuity/runtime';
-import { z } from 'zod';
-
-const agent = createAgent({
-	metadata: {
-		description: 'My amazing agent',
-	},
-	schema: {
-		input: z.object({
-			message: z.string(),
-		}),
-		output: z.object({
-			response: z.string(),
-		}),
-	},
-	handler: async (ctx: AgentContext, input) => {
-		return { response: `Processed: ${input.message}` };
-	},
-});
-
-export default agent;
+```env
+AGENTUITY_SDK_KEY=your-agentuity-key
+DISCORD_BOT_TOKEN=your-discord-bot-token
+SLACK_BOT_TOKEN=your-slack-bot-token
 ```
 
-## Adding API Routes
+### Slack Channel
 
-Create custom routes in `src/apis/` or add routes to an agent folder:
+The Slack channel ID is configured in `src/agents/slack/agent.ts`. Update the `SLACK_CHANNEL_ID` constant to point to your support channel.
 
-```typescript
-// src/agents/my-agent/route.ts
-import { createRouter } from '@agentuity/runtime';
-import { zValidator } from '@hono/zod-validator';
-import agent from './agent';
+## Deployment
 
-const router = createRouter();
+Deploy to Agentuity cloud:
 
-router.get('/', async (c) => {
-	const result = await c.agent.myAgent.run({ message: 'Hello!' });
-	return c.json(result);
-});
-
-router.post('/', zValidator('json', agent.inputSchema!), async (c) => {
-	const data = c.req.valid('json');
-	const result = await c.agent.myAgent.run(data);
-	return c.json(result);
-});
-
-export default router;
+```bash
+bun run deploy
 ```
 
 ## Learn More
