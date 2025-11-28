@@ -1,0 +1,14 @@
+{
+  // the project id
+  "projectId": "proj_a90383923fb906058fcb9fcfcb4fd048",
+  // the organization id
+  "orgId": "org_2wjaZnWI8SlPNUPR1ZYGEHfBNCj",
+  // the deployment configuration
+  "deployment": {
+    "resources": {
+      "memory": "500Mi",
+      "cpu": "500m",
+      "disk": "500Mi"
+    }
+  }
+}

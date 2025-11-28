@@ -7,6 +7,8 @@
 - **Typecheck**: `bun run typecheck` (runs TypeScript type checking)
 - **Deploy**: `bun run deploy` (deploys your app to the Agentuity cloud)
 
+**Note**: Assume the dev server is already running. Do not start it yourself.
+
 ## Agent-Friendly CLI
 
 The Agentuity CLI is designed to be agent-friendly with programmatic interfaces, structured output, and comprehensive introspection.
