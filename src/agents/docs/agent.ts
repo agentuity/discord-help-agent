@@ -4,7 +4,19 @@ import { generateText } from "ai";
 import { z } from "zod";
 
 export const inputSchema = z.object({
-	message: z.string(),
+	messages: z.array(
+		z.object({
+			id: z.string(),
+			content: z.string(),
+			timestamp: z.string(),
+			isBot: z.boolean(),
+			author: z.object({
+				id: z.string(),
+				username: z.string(),
+				global_name: z.string().optional(),
+			}),
+		}),
+	),
 });
 
 const outputSchema = z.object({
@@ -26,7 +38,10 @@ const docsAgent = createAgent({
 		output: outputSchema,
 	},
 	handler: async (_c: AgentContext, input) => {
-		const { message } = input;
+		const formattedMessages = input.messages.map((msg) => ({
+			role: msg.isBot ? ("assistant" as const) : ("user" as const),
+			content: `${msg.author.username}: ${msg.content}`,
+		}));
 
 		const docsResponse = await fetch("https://agentuity.dev/llms.txt");
 
@@ -36,7 +51,7 @@ const docsAgent = createAgent({
 
 		const { text } = await generateText({
 			model: anthropic("claude-sonnet-4-5"),
-			messages: [{ role: "user", content: message }],
+			messages: formattedMessages,
 			system: `${systemPrompt}\n\nHere's the agentuity docs: ${docsResponse.text()}`,
 		});
 

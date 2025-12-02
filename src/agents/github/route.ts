@@ -6,7 +6,7 @@ const router = createRouter();
 
 router.post("/", zValidator("json", inputSchema), async (c) => {
 	const request = await c.req.json();
-	const response = await c.agent.slack.run(request);
+	const response = await c.agent.github.run(request);
 
 	return c.json(response);
 });

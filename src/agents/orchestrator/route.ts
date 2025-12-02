@@ -6,7 +6,7 @@ const router = createRouter();
 
 router.post("/", zValidator("json", inputSchema), async (c) => {
 	const request = await c.req.json();
-	const response = await c.agent.help.run(request);
+	const response = await c.agent.orchestrator.run(request);
 
 	return c.json(response);
 });

@@ -16,9 +16,10 @@ router.post("/process", async (c) => {
 		payload.isThread,
 	);
 
-	const result = await c.agent.help.run({
+	const result = await c.agent.orchestrator.run({
 		messages: payload.messages,
 		channelId: payload.channelId,
+		guildId: payload.guildId,
 		isThread: payload.isThread,
 	});
 
@@ -61,3 +62,4 @@ router.get("/", (c) => {
 });
 
 export default router;
+

@@ -1,3 +1,6 @@
+import type { Logger } from "@agentuity/core";
+import type { Hono } from "hono";
+
 const HELP_KEYWORDS = [
 	"help",
 	"issue",
@@ -66,6 +69,7 @@ export interface ProcessedMessage {
 export interface ThreadMessagesPayload {
 	messages: ProcessedMessage[];
 	channelId: string;
+	guildId: string;
 	isThread: boolean;
 }
 
@@ -75,11 +79,11 @@ export class DiscordGateway {
 	private sequenceNumber: number | null = null;
 	private sessionId: string | null = null;
 	private token: string;
-	private router: any;
-	private logger: any;
+	private router: Hono;
+	private logger: Logger;
 	static GATEWAY_URL = "wss://gateway.discord.gg/?v=10&encoding=json";
 
-	constructor(token: string, router: any, logger: any) {
+	constructor(token: string, router: Hono, logger: Logger) {
 		this.token = token;
 		this.router = router;
 		this.logger = logger;
@@ -152,6 +156,11 @@ export class DiscordGateway {
 					break;
 				}
 
+				if (!message.guild_id) {
+					this.logger.debug("Ignoring message - no guild id");
+					break;
+				}
+
 				// Ignore empty messages
 				if (!message.content || message.content.trim() === "") {
 					this.logger.debug("Ignoring empty message");
@@ -184,6 +193,7 @@ export class DiscordGateway {
 					requestPayload = {
 						messages: threadMessages,
 						channelId: message.channel_id,
+						guildId: message.guild_id,
 						isThread: true,
 					};
 				} else {
@@ -205,23 +215,31 @@ export class DiscordGateway {
 								},
 							},
 						],
+						guildId: message.guild_id,
 						channelId: message.channel_id,
 						isThread: false,
 					};
 				}
 
 				// Use internal fetch to process messages with agent context
-				this.router
-					.fetch(
-						new Request("http://internal/api/status/process", {
-							method: "POST",
-							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify(requestPayload),
-						}),
-					)
-					.catch((err: Error) =>
-						this.logger.error("Failed to process message:", err),
+				const response = await this.router.fetch(
+					new Request("http://internal/api/status/process", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify(requestPayload),
+					}),
+				);
+
+				if (!response.ok) {
+					this.logger.error(
+						"Failed to process message:\n\n",
+						await response.text(),
 					);
+					return;
+				}
+
+				this.logger.debug("Message processed successfully");
+
 				break;
 			}
 		}
@@ -291,19 +309,17 @@ export class DiscordGateway {
 
 		const messages = (await response.json()) as DiscordMessage[];
 
-		return messages
-			.reverse()
-			.map((msg) => ({
-				id: msg.id,
-				content: msg.content,
-				timestamp: msg.timestamp,
-				isBot: msg.author.bot || false,
-				author: {
-					id: msg.author.id,
-					username: msg.author.username,
-					global_name: msg.author.global_name,
-				},
-			}));
+		return messages.reverse().map((msg) => ({
+			id: msg.id,
+			content: msg.content,
+			timestamp: msg.timestamp,
+			isBot: msg.author.bot || false,
+			author: {
+				id: msg.author.id,
+				username: msg.author.username,
+				global_name: msg.author.global_name,
+			},
+		}));
 	}
 
 	private isThreadChannel(channelType: number): boolean {
