@@ -1,4 +1,5 @@
 import { type AgentContext, createAgent } from "@agentuity/runtime";
+import { anthropic } from "@ai-sdk/anthropic";
 import { groq } from "@ai-sdk/groq";
 import { generateObject } from "ai";
 import { z } from "zod";
@@ -15,6 +16,7 @@ export const inputSchema = z.object({
 				username: z.string(),
 				global_name: z.string().optional(),
 			}),
+			images: z.array(z.string()).optional(),
 		}),
 	),
 	channelId: z.string(),
@@ -26,6 +28,7 @@ const outputSchema = z.object({
 	metadata: z
 		.object({
 			messageId: z.string(),
+			shouldCloseThread: z.boolean().optional(),
 		})
 		.optional(),
 	message: z.string(),
@@ -41,10 +44,9 @@ You are an orchestrator that triages questions related to Agentuity.
 
 The user will provide you with a Discord message and you will decide what action to take:
 
-- If the conversation is too complicated or prolong itself set action to with "createGithubIssue" with a summary of the whole conversation and issue on the message.
+- If the conversation is too complicated, prolonged, or involves a bug/error/technical issue that requires staff attention, set action to "createGithubIssue" with a summary of the whole conversation and issue on the message.
 - If the message is relevant to Agentuity and the user needs help with documentation or how-to questions, set action to "searchDocs" with a prompt for the docs agent.
-- If the message is about a bug, error, or technical issue that requires staff attention, set action to "respond" with the message: "I don't think I can help with this technical issue, but <@&1334347052397887619> should be able to take a look into it!"
-- If the content has no relevance to Agentuity or has no issues, set action to "ignore" with an empty message.
+- If this is a standalone message (not part of a conversation) and has no relevance to Agentuity or has no issues, set action to "ignore" with an empty message. However, if this is part of an ongoing conversation, continue to engage even if the latest message seems less relevant.
 `;
 
 const agent = createAgent({
@@ -71,8 +73,14 @@ const agent = createAgent({
 			`Received ${input.messages.length} messages from ${input.isThread ? "thread" : "channel"}`,
 		);
 
+		const hasImage = input.messages.some(
+			(msg) => msg.images && msg.images.length > 0,
+		);
+
 		const { object } = await generateObject({
-			model: groq("openai/gpt-oss-20b"),
+			model: hasImage
+				? anthropic("claude-haiku-4-5")
+				: groq("openai/gpt-oss-20b"),
 			schema: agentOutputSchema,
 			system: systemPrompt,
 			messages: formattedMessages,
@@ -98,11 +106,14 @@ const agent = createAgent({
 						guildId: input.guildId,
 						isThread: input.isThread,
 					},
-					message: object.message,
+					messages: input.messages,
 				});
 				return {
 					message: agentResponse.userResponse,
-					metadata: { messageId: latestMessage.id },
+					metadata: {
+						messageId: latestMessage.id,
+						shouldCloseThread: agentResponse.shouldCloseThread,
+					},
 				};
 			}
 			case "respond":

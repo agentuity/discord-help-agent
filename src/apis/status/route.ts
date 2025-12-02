@@ -46,6 +46,12 @@ router.post("/process", async (c) => {
 		if (chunks.length > 1) {
 			c.logger.info("Split message into %d chunks", chunks.length);
 		}
+
+		// Close thread if requested
+		if (result.metadata?.shouldCloseThread && payload.isThread) {
+			c.logger.info("Closing thread %s", payload.channelId);
+			await gateway.closeThread(payload.channelId);
+		}
 	} else {
 		c.logger.warn("No response generated or gateway not available");
 	}

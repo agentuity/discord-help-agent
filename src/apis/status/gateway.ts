@@ -38,9 +38,18 @@ export interface DiscordMessage {
 		avatar?: string;
 		bot?: boolean;
 	};
-	attachments: unknown[];
+	attachments: Array<{
+		id: string;
+		filename: string;
+		size: number;
+		url: string;
+		proxy_url: string;
+		content_type?: string;
+		width?: number;
+		height?: number;
+	}>;
 	embeds: unknown[];
-	mentions: unknown[];
+	mentions: Array<{ id: string; username: string; bot?: boolean }>;
 	mention_roles: string[];
 	pinned: boolean;
 	mention_everyone: boolean;
@@ -52,6 +61,11 @@ export interface DiscordMessage {
 	nonce?: string;
 	guild_id?: string;
 	member?: unknown;
+	message_reference?: {
+		message_id: string;
+		channel_id: string;
+		guild_id?: string;
+	};
 }
 
 export interface ProcessedMessage {
@@ -64,6 +78,7 @@ export interface ProcessedMessage {
 		username: string;
 		global_name?: string;
 	};
+	images?: string[];
 }
 
 export interface ThreadMessagesPayload {
@@ -78,6 +93,7 @@ export class DiscordGateway {
 	private heartbeatInterval: Timer | null = null;
 	private sequenceNumber: number | null = null;
 	private sessionId: string | null = null;
+	private botUserId: string | null = null;
 	private token: string;
 	private router: Hono;
 	private logger: Logger;
@@ -141,13 +157,21 @@ export class DiscordGateway {
 	private async handleDispatch(payload: GatewayPayload) {
 		switch (payload.t) {
 			case "READY": {
-				const readyData = payload.d as { session_id: string };
+				const readyData = payload.d as { session_id: string; user: { id: string } };
 				this.sessionId = readyData.session_id;
-				this.logger.info("Gateway ready, session: %s", this.sessionId);
+				this.botUserId = readyData.user.id;
+				this.logger.info("Gateway ready, session: %s, bot ID: %s", this.sessionId, this.botUserId);
+				break;
+			}
+			case "THREAD_CREATE": {
+				const thread = payload.d as { id: string; guild_id: string; name: string };
+				this.logger.info("Thread created: %s (%s)", thread.name, thread.id);
+				// Thread creation event can be handled here if needed
 				break;
 			}
 			case "MESSAGE_CREATE": {
 				const message = payload.d as DiscordMessage;
+				this.logger.debug("Message payload: %s", JSON.stringify(message, null, 2));
 				this.logger.debug("Message received from %s", message.author.username);
 
 				// Ignore bot messages to prevent loops
@@ -167,14 +191,27 @@ export class DiscordGateway {
 					break;
 				}
 
-				// Only process messages that indicate help needed
+				// Check if message mentions the bot
+				const mentionsBot = message.mentions.some(
+					(mention) => mention.id === this.botUserId,
+				);
+
+				// Check if message is a reply to a bot message
+				const isReplyToBot = message.message_reference
+					? await this.isReplyToBotMessage(
+							message.message_reference.channel_id,
+							message.message_reference.message_id,
+						)
+					: false;
+
+				// Process if: mentions bot, replies to bot, or contains help keywords
 				const contentLower = message.content.toLowerCase();
 				const needsHelp = HELP_KEYWORDS.some((keyword) =>
 					contentLower.includes(keyword),
 				);
 
-				if (!needsHelp) {
-					this.logger.debug("Ignoring message - no help keywords detected");
+				if (!mentionsBot && !isReplyToBot && !needsHelp) {
+					this.logger.debug("Ignoring message - no bot interaction or help keywords detected");
 					break;
 				}
 
@@ -201,6 +238,14 @@ export class DiscordGateway {
 						"Processing help request from %s",
 						message.author.username,
 					);
+					const imageAttachments = message.attachments
+						.filter(
+							(att) =>
+								att.content_type?.startsWith("image/") ||
+								/\.(jpg|jpeg|png|gif|webp)$/i.test(att.filename),
+						)
+						.map((att) => att.url);
+
 					requestPayload = {
 						messages: [
 							{
@@ -211,8 +256,9 @@ export class DiscordGateway {
 								author: {
 									id: message.author.id,
 									username: message.author.username,
-									global_name: message.author.global_name,
+									...(message.author.global_name && { global_name: message.author.global_name }),
 								},
+								...(imageAttachments.length > 0 && { images: imageAttachments }),
 							},
 						],
 						guildId: message.guild_id,
@@ -222,6 +268,7 @@ export class DiscordGateway {
 				}
 
 				// Use internal fetch to process messages with agent context
+				this.logger.debug("Request payload: %s", JSON.stringify(requestPayload, null, 2));
 				const response = await this.router.fetch(
 					new Request("http://internal/api/status/process", {
 						method: "POST",
@@ -309,22 +356,61 @@ export class DiscordGateway {
 
 		const messages = (await response.json()) as DiscordMessage[];
 
-		return messages.reverse().map((msg) => ({
-			id: msg.id,
-			content: msg.content,
-			timestamp: msg.timestamp,
-			isBot: msg.author.bot || false,
-			author: {
-				id: msg.author.id,
-				username: msg.author.username,
-				global_name: msg.author.global_name,
-			},
-		}));
+		return messages.reverse().map((msg) => {
+			const imageAttachments = msg.attachments
+				.filter(
+					(att) =>
+						att.content_type?.startsWith("image/") ||
+						/\.(jpg|jpeg|png|gif|webp)$/i.test(att.filename),
+				)
+				.map((att) => att.url);
+
+			return {
+				id: msg.id,
+				content: msg.content,
+				timestamp: msg.timestamp,
+				isBot: msg.author.bot || false,
+				author: {
+					id: msg.author.id,
+					username: msg.author.username,
+					...(msg.author.global_name && { global_name: msg.author.global_name }),
+				},
+				...(imageAttachments.length > 0 && { images: imageAttachments }),
+			};
+		});
 	}
 
 	private isThreadChannel(channelType: number): boolean {
 		// Channel type 11 = PUBLIC_THREAD, 12 = PRIVATE_THREAD
 		return channelType === 11 || channelType === 12;
+	}
+
+	private async isReplyToBotMessage(
+		channelId: string,
+		messageId: string,
+	): Promise<boolean> {
+		try {
+			const url = `https://discord.com/api/v10/channels/${channelId}/messages/${messageId}`;
+			const response = await fetch(url, {
+				headers: {
+					Authorization: `Bot ${this.token}`,
+				},
+			});
+
+			if (!response.ok) {
+				this.logger.error(
+					"Failed to fetch message for reply check: %s",
+					await response.text(),
+				);
+				return false;
+			}
+
+			const referencedMessage = (await response.json()) as DiscordMessage;
+			return referencedMessage.author.id === this.botUserId;
+		} catch (error) {
+			this.logger.error("Error checking reply message:", error);
+			return false;
+		}
 	}
 
 	async sendMessage(channelId: string, content: string, messageId?: string) {
@@ -354,6 +440,30 @@ export class DiscordGateway {
 		}
 
 		return response.json();
+	}
+
+	async closeThread(channelId: string) {
+		const url = `https://discord.com/api/v10/channels/${channelId}`;
+
+		const response = await fetch(url, {
+			method: "PATCH",
+			headers: {
+				Authorization: `Bot ${this.token}`,
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				archived: true,
+				locked: false,
+			}),
+		});
+
+		if (!response.ok) {
+			this.logger.error("Failed to close thread: %s", await response.text());
+			return false;
+		}
+
+		this.logger.info("Closed thread %s", channelId);
+		return true;
 	}
 
 	disconnect() {
