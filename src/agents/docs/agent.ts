@@ -31,7 +31,8 @@ If no answer is found, you should say "Sorry, I couldn't find an answer to that 
 
 const docsAgent = createAgent({
 	metadata: {
-		name: "Agentuity Docs Search",
+		name: "docs",
+		description: "Searches the Agentuity docs for answers to questions",
 	},
 	schema: {
 		input: inputSchema,
@@ -60,3 +61,4 @@ const docsAgent = createAgent({
 });
 
 export default docsAgent;
+

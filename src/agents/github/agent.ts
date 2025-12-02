@@ -3,8 +3,6 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { generateObject } from "ai";
 import { z } from "zod";
 
-const GITHUB_REPO = "agentuity/discord-help-agent";
-
 export const inputSchema = z.object({
 	metadata: z.object({
 		username: z.string(),
@@ -19,6 +17,7 @@ const outputSchema = z.object({
 	issueTitle: z.string(),
 	issueBody: z.string(),
 	userResponse: z.string(),
+	repository: z.enum(["agentuity/app", "agentuity/sdk"]),
 });
 
 const systemPrompt = `
@@ -28,6 +27,9 @@ You will receive a message from a user and you will:
 1. Create a concise, descriptive title for the GitHub issue (issueTitle)
 2. Format the issue details in markdown for the GitHub issue body (issueBody)
 3. Generate a response to send back to the user acknowledging the issue was created (userResponse)
+4. Determine the appropriate repository:
+   - Use "agentuity/app" for website-related issues
+   - Use "agentuity/sdk" for project-related issues
 `;
 
 const agent = createAgent({
@@ -56,7 +58,7 @@ const agent = createAgent({
 		if (githubToken) {
 			try {
 				const response = await fetch(
-					`https://api.github.com/repos/${GITHUB_REPO}/issues`,
+					`https://api.github.com/repos/${object.repository}/issues`,
 					{
 						method: "POST",
 						headers: {

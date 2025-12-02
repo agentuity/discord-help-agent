@@ -1,7 +1,8 @@
 {
-	"projectId": "proj_a90383923fb906058fcb9fcfcb4fd048",
-	"orgId": "org_2wjaZnWI8SlPNUPR1ZYGEHfBNCj",
-	"region": "local",
+	"$schema": "https://agentuity.dev/schema/cli/v1/agentuity.json",
+	"projectId": "proj_c84b8020f333447393869689c314566c",
+	"orgId": "org_2xBbgoJqFnYYYzsvrWg8A4fh8mF",
+	"region": "use",
 	"deployment": {
 		"resources": {
 			"memory": "500Mi",

@@ -84,12 +84,8 @@ Create a `.env` file with the following variables:
 ```env
 AGENTUITY_SDK_KEY=your-agentuity-key
 DISCORD_BOT_TOKEN=your-discord-bot-token
-SLACK_BOT_TOKEN=your-slack-bot-token
+GITHUB_TOKEN=your-github-personal-access-token
 ```
-
-### Slack Channel
-
-The Slack channel ID is configured in `src/agents/slack/agent.ts`. Update the `SLACK_CHANNEL_ID` constant to point to your support channel.
 
 ## Deployment
 
