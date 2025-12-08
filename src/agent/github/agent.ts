@@ -48,11 +48,8 @@ You will receive a message from a user and you will:
 5. Set shouldCloseThread to true if this is a thread that should be closed after the issue is created
 `;
 
-const agent = createAgent({
-	metadata: {
-		name: "github",
-		description: "Creates GitHub issues from Discord help requests",
-	},
+const gitAgent = createAgent("GitIssue", {
+	description: "Create a GitHub issue from a Discord support request",
 	schema: {
 		input: inputSchema,
 		output: outputSchema,
@@ -129,4 +126,5 @@ const agent = createAgent({
 	},
 });
 
-export default agent;
+export default gitAgent;
+

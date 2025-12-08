@@ -15,10 +15,10 @@
 		"@agentuity/core": "latest",
 		"@agentuity/react": "latest",
 		"@agentuity/runtime": "latest",
-		"@ai-sdk/anthropic": "^2.0.52",
+		"@ai-sdk/anthropic": "^2.0.53",
 		"@ai-sdk/groq": "^2.0.32",
 		"@hono/zod-validator": "^0.7.5",
-		"ai": "^5.0.105",
+		"ai": "^5.0.108",
 		"hono": "^4.10.7",
 		"json-colorizer": "^3.0.1",
 		"zod": "^4.1.13"

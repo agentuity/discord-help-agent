@@ -1,6 +1,9 @@
 const MAX_MESSAGE_LENGTH = 2000;
 
-export function chunkMessage(message: string, maxLength = MAX_MESSAGE_LENGTH): string[] {
+export function chunkMessage(
+	message: string,
+	maxLength = MAX_MESSAGE_LENGTH,
+): string[] {
 	if (message.length <= maxLength) {
 		return [message];
 	}

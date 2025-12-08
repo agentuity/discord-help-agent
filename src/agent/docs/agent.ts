@@ -32,11 +32,8 @@ Keep your answers short and concise. Prefering to link to resources instead of s
 If no answer is found, you should say "Sorry, I couldn't find an answer to that question."
 `;
 
-const docsAgent = createAgent({
-	metadata: {
-		name: "docs",
-		description: "Searches the Agentuity docs for answers to questions",
-	},
+const docsAgent = createAgent("Docs", {
+	description: "Search the Agentuity docs for answers to a question",
 	schema: {
 		input: inputSchema,
 		output: outputSchema,

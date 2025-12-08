@@ -9,4 +9,3 @@ export function initializeGateway(token: string, router: any, logger: any) {
 	}
 	return gateway;
 }
-

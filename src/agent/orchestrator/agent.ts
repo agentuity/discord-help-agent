@@ -3,6 +3,8 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { groq } from "@ai-sdk/groq";
 import { generateObject } from "ai";
 import { z } from "zod";
+import docsAgent from "../docs/agent";
+import gitAgent from "../github/agent";
 
 export const inputSchema = z.object({
 	messages: z.array(
@@ -49,11 +51,8 @@ The user will provide you with a Discord message and you will decide what action
 - If this is a standalone message (not part of a conversation) and has no relevance to Agentuity or has no issues, set action to "ignore" with an empty message. However, if this is part of an ongoing conversation, continue to engage even if the latest message seems less relevant.
 `;
 
-const agent = createAgent({
-	metadata: {
-		name: "orchestrator",
-		description: "This is an orchestrator for the slack help system.",
-	},
+const orchestratorAgent = createAgent("Orchestrator", {
+	description: "Orchestrates Discord messages into actions",
 	schema: {
 		input: inputSchema,
 		output: outputSchema,
@@ -90,7 +89,7 @@ const agent = createAgent({
 
 		switch (object.action) {
 			case "searchDocs": {
-				const agentResponse = await c.agent.docs.run({
+				const agentResponse = await docsAgent.run({
 					messages: input.messages,
 				});
 				return {
@@ -99,7 +98,7 @@ const agent = createAgent({
 				};
 			}
 			case "createGithubIssue": {
-				const agentResponse = await c.agent.github.run({
+				const agentResponse = await gitAgent.run({
 					metadata: {
 						username: latestMessage.author.username,
 						channelId: input.channelId,
@@ -130,4 +129,4 @@ const agent = createAgent({
 	},
 });
 
-export default agent;
+export default orchestratorAgent;
