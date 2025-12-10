@@ -1,8 +1,8 @@
 import { createRouter } from "@agentuity/runtime";
 import orchestratorAgent from "../../agent/orchestrator/agent";
-import type { ThreadMessagesPayload } from "./gateway";
-import { gateway } from "./instance";
-import { chunkMessage } from "./utils";
+import type { ThreadMessagesPayload } from "../../gateway/gateway";
+import { gateway } from "../../gateway/instance";
+import { chunkMessage } from "../../utils/chunkMessage";
 
 const router = createRouter();
 
@@ -83,4 +83,3 @@ router.get("/", (c) => {
 });
 
 export default router;
-

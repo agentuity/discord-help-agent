@@ -1,5 +1,5 @@
 import { createApp } from "@agentuity/runtime";
-import { initializeGateway } from "./src/api/status/instance";
+import { initializeGateway } from "./src/gateway/instance";
 
 const { server, logger, router } = await createApp();
 
