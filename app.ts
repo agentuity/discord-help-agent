@@ -1,16 +1,23 @@
 import { createApp } from "@agentuity/runtime";
 import { initializeGateway } from "./src/gateway/instance";
 
-const { server, logger, router } = await createApp();
+const { server, logger, router } = await createApp({
+	setup() {
+		// Initialize Discord Gateway on startup
+		const token = process.env.DISCORD_BOT_TOKEN;
 
-// Initialize Discord Gateway on startup
-const token = process.env.DISCORD_BOT_TOKEN;
+		if (!token) {
+			logger.error(
+				"DISCORD_BOT_TOKEN not set, Discord Gateway not initialized",
+			);
+			process.exit(1);
+		}
 
-if (!token) {
-	logger.error("DISCORD_BOT_TOKEN not set, Discord Gateway not initialized");
-	process.exit(1);
-}
-
-initializeGateway(token, router, logger);
+		const gateway = initializeGateway(token, router, logger);
+		return {
+			gateway,
+		};
+	},
+});
 
 logger.debug("Running %s", server.url);
